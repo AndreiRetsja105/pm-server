@@ -348,6 +348,14 @@ app.get("/admin/users", requireAdmin, async (_req, res) => {  //// List users  /
   res.json({ users: list });  ////// respond with user list
 });
 
+//// to donwload db.json  ////////
+app.get("/admin/db", (req, res) => {  
+  if (req.headers["x-admin-key"] !== process.env.ADMIN_API_KEY)   
+    return res.status(401).json({ error: "Unauthorized" });   //// error invalid autorization 
+
+  res.sendFile(path.join(DATA_DIR, "db.json"));    
+});
+
 app.delete("/admin/users/:username", requireAdmin, async (req, res) => {   /////  delete user ///admin ////
   const uname = lower(req.params.username);  //// normalize path param 
   const db = await loadDB();   //// load from Database
@@ -510,3 +518,4 @@ app.get("/debug-routes", (_req, res) => {   //// register route for debugging
 app.listen(PORT, () => {    ////// // Start HTTP server //////////////
   console.log(`Server listening on :${PORT}`);  ///////// / log listening port
 });
+
