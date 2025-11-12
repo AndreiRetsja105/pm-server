@@ -1,42 +1,56 @@
-// --- server.js (ESM) ---
-import express from "express";  /// 
-import cors from "cors";  ////
-import fs from "fs-extra"; //
-import { fileURLToPath } from "node:url";  ///
-import path from "node:path"; ///
-import crypto from "node:crypto";  /// / Cryptographic utilities (random bytes, UUID,and etc.) 
-import nodemailer from "nodemailer";   ////
-import rateLimit from "express-rate-limit";   ///  
-import validator from "validator";  ///  Validatio and sanitization helpers 
-import helmet from "helmet";   ////  sets secure Http headers  
-import dotenv from "dotenv";
-dotenv.config();
+//// we created this server node.js as extra work, we are the students. 
+//// we still learning and ot curiosity to how it works node express, but due to lack of knowledge we using a clear example from open sources, to see how is syntax methods and functions is work it . The all it was adopted to this project.
+//// this is was extra work, and not part of main project.  
+//// many methods was taken and adopted to our project from the open source. We provide the reference, from where was taken the information.  
 
-// helpers
-const strip = (s) => String(s || "").replace(/\/+$/, "");
+/////server.js //// ESM -------------
+import express from "express";  ///////HTTP framework for Node.js  // define routes and middleware for the api server //  https://expressjs.com/
+import cors from "cors";  ////Cors middleware for Express  ///approved front end , call this API from a browser ////  https://github.com/expressjs/cors#readme and ///// https://developer.mozilla.org/docs/Web/HTTP/CORS  
+import fs from "fs-extra"; ///// fs extras //reliable file for Json //// ensureDir /// readJson /// writeJson /// 
+import { fileURLToPath } from "node:url";  ////convert URL module then path and work with file path  //// have _filename/__dirname by defaul //// https://nodejs.org/api/url.html#url_fileurltopath_url
+import path from "node:path"; ///  work with file paths ////  ////// https://nodejs.org/api/path.html
+import crypto from "node:crypto";  ///  ////  Cryptographic utilities // random bytes////UUID// generate secure tokens and IDs  //// https://nodejs.org/api/crypto.html
+import nodemailer from "nodemailer"; /// send activation messages to inbox /// https://nodemailer.com/about
+import rateLimit from "express-rate-limit";   /// rate limiting middleware //// throttle endpoints to mitigate brute-force and abuse //// https://github.com/express-rate-limit/express-rate-limit#readme
+import validator from "validator";  ///  Validatio and sanitization helpers  //// input validation and output escaping in templates /// https://github.com/validatorjs/validator.js
+import helmet from "helmet";   ////  sets secure Http headers ////reduce common web risk XSS and sniffing ///// https://helmetjs.github.io/
+import dotenv from "dotenv";   ///// Loads .env into process.env. //// configure secrets and environment /// https://github.com/motdotla/dotenv
+dotenv.config();  
 
-// where your API is publicly reachable (used in email link)
+/////// helpers----------------------------------
+
+/////Normalize URLs when comparing and concatenating
+const strip = (s) => String(s || "").replace(/\/+$/, ""); //// remove trailing slashes from strings
+
+// where your API is publicly reachable ////used in email link/////
 const APP_BASE_URL = strip(
   process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3000}`
 );
 
-// where users should land after activation (your GitHub Pages site)
+// redirect after activation ////your GitHub Pages site//////
 const FRONTEND_URL = strip(
   process.env.FRONTEND_URL ||
-  "https://andreiretsja105.github.io/API-computer-parts-database-and-secure-storage"
+  "https://andreiretsja105.github.io/API-database-Computer-parts"
 );
 
-//// paths bootstrap /////////////
+///////// paths bootstrap ------------------------------
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config();  ////  Loading  .env 
+dotenv.config();  ////  Loading.env 
 
-////////////  Configurations ////////////////////////////////
-
+////////////  Configurations -------
+//////Express deployment 
+////  The method was taken from free source, and adopted to our project 
+///references///// https://expressjs.com/en/advanced/best-practice-performance.html
 const NODE_ENV = process.env.NODE_ENV || "development";    
 const PORT = Number(process.env.PORT || 3000);   /// checking the port server 
 
+
+////allow list of browser origins ////GitHub Pages and localhost 
+////  The method was taken from free source, and adopted to our project 
+///references////// https://developer.mozilla.org/docs/Web/HTTP/COR
 const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://127.0.0.1:5500,https://andreiretsja105.github.io")
   .split(",")       /// split the commas 
   .map((s) => s.trim())   /// trimming if there any white spaces
@@ -52,21 +66,33 @@ const EMAIL_FROM = process.env.EMAIL_FROM || "Secure App <no-reply@example.com>"
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";    /// Admin Api key for protection  
 const ARCHIVE_EMAIL = process.env.ARCHIVE_EMAIL || "";    /// Archive mailbox ,it will be used in the future , at the moment it is not connected.
 
+
 // Ensure if data folders exist in the server side
+////  The method was taken from free source, and adopted to our project 
+///references/////https://github.com/jprichardson/node-fs-extra/blob/master/docs/ensureDir.md
 const baseDir = path.join(__dirname, 'files');  /// it is create the folder files if not exist 
 fs.ensureDirSync(path.join(baseDir, 'users'));   /// it is create the folder users inside the folder files  if not exist 
 fs.ensureDirSync(path.join(baseDir, 'vaults'));   /// it is create the folder vaults inside the folder files  if not exist 
 
 
 ////////////////App & Security -------------------
-
+///trust first reverse proxy //// Heroku //// Render or NGINX /////
+////correct client Ip and secure cookies behind proxies //// 
+////  The method was taken from free source, and adopted to our project 
+//////references///// https://expressjs.com/en/guide/behind-proxies.htm
 const app = express();  /// create express App instance 
 app.set("trust proxy", 1); ///  Trust first proxy (using for  Render server hosting)
+
+////  The method was taken from free source, and adopted to our project 
+//////references/// https://expressjs.com/en/api.html#express.json
 app.use(helmet());  ////  use secure Http headers
 app.use(express.json({ limit: "100mb" })); /// Parse Json with the Limit
 
 
-/////////////CORS (allow list + preflight) ----
+/////////////CORS allow list and preflight ------------------------------
+////  The method was taken from free source, and adopted to our project 
+////// Controls of the frontend origins in our case GitHub Pages and localhost, it can send requests.
+///references//  https://github.com/expressjs/cors?tab=readme-ov-file#enable-cors-for-a-single-route  
 
 const corsOptions = {
   origin(origin, cb) {
@@ -87,9 +113,11 @@ const registerLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });  // Li
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });  // Limit login attempts
 
 // /////////////////// DB utils -----------------------
-
+////  The method was taken from free source, and adopted to our project 
+///references// https://github.com/jprichardson/node-fs-extra/blob/master/docs/readJson.md
 await fs.ensureDir(DATA_DIR);  ///  ensure at data Directory is exists
 async function loadDB() {    /// read Json dataBase with defaults if it's it
+  //// read Json DataBase //// return defaults if missing //////
   try {
     const json = await fs.readJson(DB_PATH);  /// Load Json from disk
     return { users: json.users ?? {}, vaults: json.vaults ?? {} };  //// provide defaults
@@ -98,6 +126,7 @@ async function loadDB() {    /// read Json dataBase with defaults if it's it
   }
 }
 async function saveDB(db) {  /// save Json dataBase to the disk 
+  ////persist Json DataBase with pretty printing
   await fs.writeJson(DB_PATH, db, { spaces: 2 });   ///  Json print 
 }
 
@@ -223,7 +252,14 @@ async function sendActivationEmail({ email, username, token }) {     /// compose
 
 ///////////////////////// Routes -------------------------
 
-// POST /register { username, email, salt, verifier, vault }
+////  The method was taken from free source, and adopted to our project ////
+//// 409 Conflict for existing user/email ///
+//////  400 for bad input //// 
+///// 500 on mail failure///
+//// HTTP status semantics //
+///references///// https://developer.mozilla.org/docs/Web/HTTP/Status
+
+////// POST ////register //// username, email, salt, verifier, vault //////
 app.post("/register", registerLimiter, async (req, res) => {     /// register new user 
   const { username, email, salt, verifier, vault } = req.body || {};    ///// extract the fields 
   if (!username || !email || !salt || !verifier || !vault) {    /////////
@@ -280,8 +316,13 @@ app.post("/register", registerLimiter, async (req, res) => {     /// register ne
   }
 });
 
-// GET ///// activate token  /////////////
+////////// GET ///// activate token  /////////////
+////  The method was taken from free source, and adopted to our project 
+////////////res.redirect //////
+////references//// https://expressjs.com/en/api.html#res.redirect
+
 app.get("/activate", async (req, res) => {    ///////// Activation Link handle //////////  
+  //// validate token and ensure is not expired ////// then mark account activated and redirect to front-end 
   const token = String(req.query?.token || "");   /////   query  ///// read token //////
   if (!token) return res.status(400).send("Invalid activation link");   //////  validate token 
 
@@ -336,7 +377,7 @@ app.post("/updateVault", async (req, res) => {   // Update stored /////encrypted
 });
 
 
-// ----------------------- Admin APIs -----------------------
+//////////////////////////////Admin APIs -----------------------
 
 app.get("/admin/users", requireAdmin, async (_req, res) => {  //// List users  ///// admin only ///// 
   const db = await loadDB();      //// Load from Database 
@@ -346,14 +387,6 @@ app.get("/admin/users", requireAdmin, async (_req, res) => {  //// List users  /
     isActivated: !!u.isActivated,
   }));
   res.json({ users: list });  ////// respond with user list
-});
-
-//// to donwload db.json  ////////
-app.get("/admin/db", (req, res) => {  
-  if (req.headers["x-admin-key"] !== process.env.ADMIN_API_KEY)   
-    return res.status(401).json({ error: "Unauthorized" });   //// error invalid autorization 
-
-  res.sendFile(path.join(DATA_DIR, "db.json"));    
 });
 
 app.delete("/admin/users/:username", requireAdmin, async (req, res) => {   /////  delete user ///admin ////
@@ -392,9 +425,11 @@ app.post("/admin/resend-activation", requireAdmin, async (req, res) => {  ///// 
 });
 
 
-//////////////// Quick delivery test (sends to user and sends copy to Mailtrap) ---
+//////////////// Quick delivery test //////////  sends to user and sends copy to Mailtrap /////////
 
 app.get("/debug-mail", async (_req, res) => { // Test mail endpoints
+  //// manual test for SendGrid paths.
+  //// manual test for Mailtrap paths.
   try {
     const to = process.env.TEST_TO || "apicomputerparts@gmail.com";      // Destination for test mail ////env override//////
 
@@ -423,8 +458,8 @@ app.get("/debug-mail", async (_req, res) => { // Test mail endpoints
 });
 
 
+////////////////Secure blob storage ///// encrypted client-side -----------------------
 
-// ---------- Secure blob storage (encrypted client-side) ----------
 // 50 MB limit
 const MAX_BLOB_BYTES = 50 * 1024 * 1024;   //// maximum upload size in bytes
 const FILES_DIR = path.join(DATA_DIR, "files");  /// directory to store blobs 
@@ -434,7 +469,13 @@ const blobPath = (id) => path.join(FILES_DIR, `${id}.bin`);   ///// compute bina
 const metaPath = (id) => path.join(FILES_DIR, `${id}.json`); /// // compute metadata Json path by id
 
 
-// Post //files ////Json ///blobBase64, name, type ///// OR raw application/octet-stream//////
+///// Post //files ////Json ///blobBase64, name, type ///// OR raw application/octet-stream//////
+////  The method was taken from free source, and adopted to our project 
+//////HTTP 413 ////
+///references///// https://developer.mozilla.org/docs/Web/HTTP/Status/413 
+///// HTTP 415////
+///references//// https://developer.mozilla.org/docs/Web/HTTP/Status/415
+
 app.post("/files", async (req, res) => {   //// upload endpoint for blobs   d
   try {
     const ct = String(req.headers["content-type"] || "").toLowerCase();  //// normalize content type 
@@ -443,12 +484,14 @@ app.post("/files", async (req, res) => {   //// upload endpoint for blobs   d
     let meta = { name: "", type: "" };  /// colect metadata 
 
     if (ct.startsWith("application/json")) {    //// handale base64 and Json payload  
+      // Json body //// blobBase64, name? and type? 
       const body = req.body || {};    // Parsed Json body////
       if (!body.blobBase64) return res.status(400).json({ error: "Missing blobBase64" }); ///// validation
       meta.name = String(body.name || "");   //// optional name  
       meta.type = String(body.type || "");  // optional mime type
       bin = Buffer.from(body.blobBase64, "base64"); ///// decode base64 to buffer 
     } else if (ct.startsWith("application/octet-stream")) {   ////  handle raw binary 
+      // raw /// binary stream
       const chunks = [];
       let size = 0;   //// track total size
       await new Promise((resolve, reject) => {
@@ -481,7 +524,12 @@ app.post("/files", async (req, res) => {   //// upload endpoint for blobs   d
   }
 });
 
-// GET /////files/:id /////  returns the stored blob  ///////
+// GET /////files/:id ///// download and returns the stored blob  ///////
+////  The method was taken from free source, and adopted to our project 
+//// streams ///
+///references///// https://nodejs.org/api/stream.html
+//////cache control //
+///references/////https://developer.mozilla.org/docs/Web/HTTP/Headers/Cache-Control
 
 app.get("/files/:id", async (req, res) => {  ////  // Download endpoint for blobs
   try {
@@ -504,6 +552,8 @@ console.log("Files API enabled. Storing blobs in:", FILES_DIR);  ///// files dir
 
 app.get("/files-ping", (_req, res) => res.send("files routes loaded"));  /////// quick sanity ping for files router
 app.get("/debug-routes", (_req, res) => {   //// register route for debugging
+
+  //// express router stack and list routes (method/path)
   const routes = [];      ////// // collect route info
   app._router.stack.forEach((m) => {     //// internal stack 
     if (m.route && m.route.path) {    /////// if layer has a route 
@@ -514,9 +564,9 @@ app.get("/debug-routes", (_req, res) => {   //// register route for debugging
   res.json(routes);  ///// return to the routes list 
 });
 
-// ///////////////////Start ---------------------------
+// /////////////////// start  server  ---------------------------
+////  The method was taken from free source, and adopted to our project 
+///////references// https://expressjs.com/en/api.html#app.listen
 app.listen(PORT, () => {    ////// // Start HTTP server //////////////
   console.log(`Server listening on :${PORT}`);  ///////// / log listening port
 });
-
-
