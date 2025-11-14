@@ -30,7 +30,7 @@ const APP_BASE_URL = strip(
 // redirect after activation ////your GitHub Pages site//////
 const FRONTEND_URL = strip(
   process.env.FRONTEND_URL ||
-  "https://andreiretsja105.github.io/API-database-Computer-parts"
+  "https://andreiretsja105.github.io/API-computer-parts-database-and-secure-storage"
 );
 
 ///////// paths bootstrap ------------------------------
@@ -570,3 +570,4 @@ app.get("/debug-routes", (_req, res) => {   //// register route for debugging
 app.listen(PORT, () => {    ////// // Start HTTP server //////////////
   console.log(`Server listening on :${PORT}`);  ///////// / log listening port
 });
+
